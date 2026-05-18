@@ -36,7 +36,8 @@ export function CouponModal({ isOpen, onClose, onSuccess, coupon }: CouponModalP
     type: "PERCENTAGE",
     minPurchase: 0,
     expiresAt: "",
-    isActive: true
+    isActive: true,
+    usageLimit: ""
   });
 
   useEffect(() => {
@@ -48,7 +49,8 @@ export function CouponModal({ isOpen, onClose, onSuccess, coupon }: CouponModalP
           type: coupon.type || "PERCENTAGE",
           minPurchase: coupon.minPurchase || 0,
           expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toISOString().split('T')[0] : "",
-          isActive: !!coupon.isActive
+          isActive: !!coupon.isActive,
+          usageLimit: coupon.usageLimit !== null && coupon.usageLimit !== undefined ? String(coupon.usageLimit) : ""
         });
       } else {
         setFormData({
@@ -57,7 +59,8 @@ export function CouponModal({ isOpen, onClose, onSuccess, coupon }: CouponModalP
           type: "PERCENTAGE",
           minPurchase: 0,
           expiresAt: "",
-          isActive: true
+          isActive: true,
+          usageLimit: ""
         });
       }
     }
@@ -67,11 +70,18 @@ export function CouponModal({ isOpen, onClose, onSuccess, coupon }: CouponModalP
     e.preventDefault();
     setIsLoading(true);
     try {
+      const payload = {
+        ...formData,
+        discount: Number(formData.discount),
+        minPurchase: Number(formData.minPurchase),
+        usageLimit: formData.usageLimit !== "" ? Number(formData.usageLimit) : null
+      };
+
       if (coupon) {
-        await api.patch(`/coupons/${coupon.id}`, formData);
+        await api.patch(`/coupons/${coupon.id}`, payload);
         toast.success("Promotion protocol updated.");
       } else {
-        await api.post("/coupons", formData);
+        await api.post("/coupons", payload);
         toast.success("New promotion protocol generated.");
       }
       onSuccess();
@@ -190,13 +200,27 @@ export function CouponModal({ isOpen, onClose, onSuccess, coupon }: CouponModalP
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 pt-2">
-            <Checkbox 
-              id="active" 
-              checked={formData.isActive}
-              onCheckedChange={(checked) => setFormData({...formData, isActive: !!checked})}
-            />
-            <Label htmlFor="active" className="text-[11px] font-black uppercase italic cursor-pointer">Protocol Active</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Usage Limit (Optional)</Label>
+              <Input 
+                type="number"
+                placeholder="e.g. 100 (Blank = Unlimited)" 
+                value={formData.usageLimit}
+                onChange={(e) => setFormData({...formData, usageLimit: e.target.value})}
+                className="bg-secondary/20 border-border/50 h-11"
+              />
+            </div>
+            <div className="space-y-2 flex flex-col justify-end pb-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="active" 
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) => setFormData({...formData, isActive: !!checked})}
+                />
+                <Label htmlFor="active" className="text-[11px] font-black uppercase italic cursor-pointer">Protocol Active</Label>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="pt-6">
