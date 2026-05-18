@@ -143,3 +143,20 @@
 .admin-table-row {
   @apply border-b border-border/30 hover:bg-secondary/30 transition-colors;
 }
+
+.scrollbar-premium::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-premium::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-premium::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 20px;
+}
+
+.scrollbar-premium::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.6);
+}

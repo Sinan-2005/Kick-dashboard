@@ -46,16 +46,34 @@ import { ProductFilterSidebar } from "@/components/products/ProductFilterSidebar
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import api from "@/lib/api";
+import { toast } from "sonner";
+
+import { ProductModal } from "@/components/products/ProductModal";
 
 export function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("all");
+  const [selectedFilter, setSelectedFilter] = useState("active");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+
+  const openAddModal = () => {
+    setEditingProduct(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (product: any) => {
+    setEditingProduct(product);
+    setIsModalOpen(true);
+  };
 
   const fetchProductsAndStats = async () => {
     setIsLoading(true);
@@ -65,6 +83,7 @@ export function ProductsPage() {
           params: {
             search: searchTerm,
             status: selectedFilter !== "all" ? selectedFilter : undefined,
+            category: selectedCategory !== "all" ? selectedCategory : undefined,
           }
         }),
         api.get("/analytics/dashboard")
@@ -91,14 +110,22 @@ export function ProductsPage() {
     try {
       await api.delete(`/products/${id}`);
       setProducts(prev => prev.filter(p => p.id !== id));
+      toast.success("Asset terminated. Catalog synced.");
     } catch (error) {
       console.error("Deletion failed", error);
+      toast.error("Termination Protocol Error");
     }
   };
 
   React.useEffect(() => {
     fetchProductsAndStats();
-  }, [searchTerm, selectedFilter]);
+  }, [searchTerm, selectedFilter, selectedCategory]);
+
+  const handleResetFilters = () => {
+    setSelectedFilter("active");
+    setSelectedCategory("all");
+    setSearchTerm("");
+  };
 
   const toggleSelectAll = () => {
     if (selectedIds.length === products.length) {
@@ -121,6 +148,14 @@ export function ProductsPage() {
     { label: "Low Inventory", value: stats?.lowStockCount || 0, icon: TrendingUp, color: "text-amber-500" }
   ];
 
+  const sidebarProps = {
+    selectedCategory,
+    onCategoryChange: (c: string) => setSelectedCategory(c === selectedCategory ? "all" : c),
+    selectedStatus: selectedFilter,
+    onStatusChange: (s: string) => setSelectedFilter(s === selectedFilter ? "all" : s),
+    onReset: handleResetFilters
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-8 pb-20">
@@ -142,14 +177,12 @@ export function ProductsPage() {
                 <Button variant="ghost" size="icon" onClick={() => setViewMode("table")} className={cn("rounded-lg h-9 w-9", viewMode === "table" ? "bg-primary text-black" : "text-muted-foreground")}><List size={18} /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setViewMode("grid")} className={cn("rounded-lg h-9 w-9", viewMode === "grid" ? "bg-primary text-black" : "text-muted-foreground")}><LayoutGrid size={18} /></Button>
              </div>
-            <Button variant="outline" className="border-border/50 bg-card/50 text-foreground hover:bg-secondary h-11 rounded-xl font-black uppercase italic tracking-tighter text-xs">
+            <Button onClick={() => toast("Generating tactical CSV export...")} variant="outline" className="border-border/50 bg-card/50 text-foreground hover:bg-secondary h-11 rounded-xl font-black uppercase italic tracking-tighter text-xs">
               <Download className="mr-2 h-4 w-4" /> Export CSV
             </Button>
-            <Link to="/products">
-              <Button className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-11 px-6 rounded-xl">
-                <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> Add Product
-              </Button>
-            </Link>
+            <Button onClick={openAddModal} className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-11 px-6 rounded-xl shadow-neon">
+              <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> Add Product
+            </Button>
           </div>
         </div>
 
@@ -192,7 +225,7 @@ export function ProductsPage() {
                        <div className="p-6 border-b border-border/50 flex items-center justify-between">
                           <h2 className="text-xl font-black uppercase italic tracking-tighter">Filter <span className="text-primary">Ops</span></h2>
                        </div>
-                       <ProductFilterSidebar />
+                       <ProductFilterSidebar {...sidebarProps} />
                     </SheetContent>
                  </Sheet>
               </div>
@@ -204,11 +237,6 @@ export function ProductsPage() {
                  </Button>
               </div>
 
-              <Link to="/products">
-                 <Button className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-14 px-8 rounded-2xl">
-                    <Plus className="mr-2 h-5 w-5" strokeWidth={3} /> Add New
-                 </Button>
-              </Link>
            </div>
         </div>
 
@@ -216,57 +244,98 @@ export function ProductsPage() {
            <AnimatePresence>
               {isSidebarOpen && (
                  <motion.div initial={{ opacity: 0, x: -20, width: 0 }} animate={{ opacity: 1, x: 0, width: 320 }} exit={{ opacity: 0, x: -20, width: 0 }} className="hidden lg:block sticky top-28">
-                    <Card className="overflow-hidden border-border/30 bg-white shadow-none"><ProductFilterSidebar /></Card>
+                    <Card className="overflow-hidden border-border/30 bg-white shadow-none"><ProductFilterSidebar {...sidebarProps} /></Card>
                  </motion.div>
               )}
            </AnimatePresence>
 
-           <div className="flex-1 overflow-hidden">
-              <Card className="glass-premium border-border/30 overflow-hidden shadow-none">
-                 <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-secondary/20 sticky top-0 z-10">
-                      <TableRow className="hover:bg-transparent border-border/50 h-16">
-                        <TableHead className="w-[50px] pl-6"><Checkbox checked={selectedIds.length === products.length && products.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
-                        <TableHead className="w-[80px] text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Asset</TableHead>
-                        <TableHead className="min-w-[200px] text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Identity</TableHead>
-                        <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Financials</TableHead>
-                        <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Inventory</TableHead>
-                        <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic text-center">Performance</TableHead>
-                        <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Status</TableHead>
-                        <TableHead className="text-right pr-6 text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Control</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {products.map((product, i) => (
-                        <motion.tr key={product.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className={cn("group border-border/30 hover:bg-secondary/10 transition-colors", selectedIds.includes(product.id) && "bg-primary/[0.03] hover:bg-primary/[0.05]")}>
-                          <TableCell className="pl-6"><Checkbox checked={selectedIds.includes(product.id)} onCheckedChange={() => toggleSelect(product.id)} /></TableCell>
-                          <TableCell><div className="w-14 h-14 rounded-xl border border-border/50 overflow-hidden bg-secondary/30 flex items-center justify-center p-1 group-hover:scale-105 transition-transform"><img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-lg" /></div></TableCell>
-                          <TableCell><div className="flex flex-col gap-0.5"><div className="flex items-center gap-2"><span className="font-black text-foreground uppercase italic tracking-tighter text-sm">{product.name}</span>{product.isFeatured && <Star size={10} className="text-primary fill-primary" />}</div><div className="flex items-center gap-2"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">KCK-{product.id.substring(0, 8)}</span><span className="w-1 h-1 rounded-full bg-border" /><span className="text-[9px] font-black text-primary uppercase tracking-widest">{product.category}</span></div></div></TableCell>
-                          <TableCell><div className="flex flex-col"><span className="font-black text-foreground text-sm tracking-tighter">${product.price.toFixed(2)}</span></div></TableCell>
-                          <TableCell><div className="space-y-2 w-32"><div className="flex justify-between items-end"><span className={cn("text-[10px] font-black uppercase italic", product.stock === 0 ? "text-red-500" : product.stock < 20 ? "text-amber-500" : "text-emerald-500")}>{product.stock} Units</span></div><div className="h-1 w-full bg-secondary rounded-full overflow-hidden"><div className={cn("h-full rounded-full", product.stock === 0 ? "bg-red-500" : product.stock < 20 ? "bg-amber-500" : "bg-emerald-500")} style={{ width: `${Math.min(100, (product.stock / 100) * 100)}%` }} /></div></div></TableCell>
-                          <TableCell><div className="flex items-center justify-center gap-6"><div className="text-center"><p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">Views</p><p className="text-xs font-black text-foreground italic">{product.views || '0'}</p></div><div className="text-center"><p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">Sales</p><p className="text-xs font-black text-foreground italic">{product.sales || '0'}</p></div></div></TableCell>
-                          <TableCell><Badge variant="outline" className={cn("rounded-sm border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5", product.stock === 0 ? "bg-red-500 text-red-950" : product.stock < 10 ? "bg-amber-500 text-amber-950" : "bg-emerald-500 text-emerald-950")}>{product.stock === 0 ? 'Out of Stock' : product.stock < 10 ? 'Low Stock' : 'Active'}</Badge></TableCell>
-                          <TableCell className="text-right pr-6">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-10 w-10 rounded-xl hover:bg-secondary transition-all"><MoreVertical size={18} /></Button></DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-card border-border p-2 min-w-[160px]">
-                                <DropdownMenuItem className="focus:bg-primary focus:text-black cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5"><Eye className="mr-2 h-4 w-4" /> Analyze</DropdownMenuItem>
-                                <DropdownMenuItem className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5"><Edit className="mr-2 h-4 w-4" /> Configure</DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-border/50" />
-                                <DropdownMenuItem onClick={() => handleDelete(product.id)} className="focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5 text-red-500"><Trash2 className="mr-2 h-4 w-4" /> Terminate</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </motion.tr>
-                      ))}
-                    </TableBody>
-                  </Table>
-                 </div>
-              </Card>
-           </div>
+            <div className="flex-1 overflow-hidden">
+               {viewMode === "table" ? (
+                  <Card className="glass-premium border-border/30 overflow-hidden shadow-none">
+                     <div className="overflow-x-auto">
+                        <Table>
+                           <TableHeader className="bg-secondary/20 sticky top-0 z-10">
+                              <TableRow className="hover:bg-transparent border-border/50 h-16">
+                                 <TableHead className="w-[50px] pl-6"><Checkbox checked={selectedIds.length === products.length && products.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
+                                 <TableHead className="w-[80px] text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Asset</TableHead>
+                                 <TableHead className="min-w-[200px] text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Identity</TableHead>
+                                 <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Financials</TableHead>
+                                 <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Inventory</TableHead>
+                                 <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic text-center">Performance</TableHead>
+                                 <TableHead className="text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Status</TableHead>
+                                 <TableHead className="text-right pr-6 text-foreground/90 font-black uppercase text-[10px] tracking-widest italic">Control</TableHead>
+                              </TableRow>
+                           </TableHeader>
+                           <TableBody>
+                              {products.map((product, i) => (
+                                 <motion.tr key={product.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className={cn("group border-border/30 hover:bg-secondary/10 transition-colors", selectedIds.includes(product.id) && "bg-primary/[0.03] hover:bg-primary/[0.05]")}>
+                                    <TableCell className="pl-6"><Checkbox checked={selectedIds.includes(product.id)} onCheckedChange={() => toggleSelect(product.id)} /></TableCell>
+                                    <TableCell><div className="w-14 h-14 rounded-xl border border-border/50 overflow-hidden bg-secondary/30 flex items-center justify-center p-1 group-hover:scale-105 transition-transform"><img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-lg" /></div></TableCell>
+                                    <TableCell><div className="flex flex-col gap-0.5"><div className="flex items-center gap-2"><span className="font-black text-foreground uppercase italic tracking-tighter text-sm">{product.name}</span>{product.isFeatured && <Star size={10} className="text-primary fill-primary" />}</div><div className="flex items-center gap-2"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">KCK-{product.id.substring(0, 8)}</span><span className="w-1 h-1 rounded-full bg-border" /><span className="text-[9px] font-black text-primary uppercase tracking-widest">{product.category}</span></div></div></TableCell>
+                                    <TableCell><div className="flex flex-col"><span className="font-black text-foreground text-sm tracking-tighter">${product.price.toFixed(2)}</span></div></TableCell>
+                                    <TableCell><div className="space-y-2 w-32"><div className="flex justify-between items-end"><span className={cn("text-[10px] font-black uppercase italic", product.stock === 0 ? "text-red-500" : product.stock < 20 ? "text-amber-500" : "text-emerald-500")}>{product.stock} Units</span></div><div className="h-1 w-full bg-secondary rounded-full overflow-hidden"><div className={cn("h-full rounded-full", product.stock === 0 ? "bg-red-500" : product.stock < 20 ? "bg-amber-500" : "bg-emerald-500")} style={{ width: `${Math.min(100, (product.stock / 100) * 100)}%` }} /></div></div></TableCell>
+                                    <TableCell><div className="flex items-center justify-center gap-6"><div className="text-center"><p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">Views</p><p className="text-xs font-black text-foreground italic">{product.views || '0'}</p></div><div className="text-center"><p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-0.5">Sales</p><p className="text-xs font-black text-foreground italic">{product.sales || '0'}</p></div></div></TableCell>
+                                    <TableCell><Badge variant="outline" className={cn("rounded-sm border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5", product.status === 'draft' ? "bg-amber-500 text-amber-950" : product.status === 'archived' ? "bg-secondary text-secondary-foreground" : "bg-emerald-500 text-emerald-950")}>{product.status || 'Active'}</Badge></TableCell>
+                                    <TableCell className="text-right pr-6">
+                                       <DropdownMenu>
+                                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-10 w-10 rounded-xl hover:bg-secondary transition-all"><MoreVertical size={18} /></Button></DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="bg-card border-border p-2 min-w-[160px]">
+                                             <DropdownMenuItem onClick={() => toast(`Opening deep-dive analysis for ${product.name}`)} className="focus:bg-primary focus:text-black cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5"><Eye className="mr-2 h-4 w-4" /> Analyze</DropdownMenuItem>
+                                             <DropdownMenuItem onClick={() => openEditModal(product)} className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5"><Edit className="mr-2 h-4 w-4" /> Configure</DropdownMenuItem>
+                                             <DropdownMenuSeparator className="bg-border/50" />
+                                             <DropdownMenuItem onClick={() => handleDelete(product.id)} className="focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5 text-red-500"><Trash2 className="mr-2 h-4 w-4" /> Terminate</DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                       </DropdownMenu>
+                                    </TableCell>
+                                 </motion.tr>
+                              ))}
+                           </TableBody>
+                        </Table>
+                     </div>
+                  </Card>
+               ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                     {products.map((product, i) => (
+                        <motion.div key={product.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="glass-premium border border-border/30 rounded-[2.5rem] overflow-hidden group p-6 flex flex-col gap-6">
+                           <div className="aspect-square rounded-3xl bg-secondary/20 border border-border/30 overflow-hidden relative group">
+                              <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={product.name} />
+                              <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Button onClick={() => openEditModal(product)} size="icon" className="rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-primary hover:text-black"><Edit size={16} /></Button>
+                                 <Button onClick={() => handleDelete(product.id)} size="icon" className="rounded-xl bg-red-500/10 backdrop-blur-md border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white"><Trash2 size={16} /></Button>
+                              </div>
+                           </div>
+                           <div className="flex-1 space-y-4">
+                              <div className="flex justify-between items-start">
+                                 <div>
+                                    <h4 className="font-black uppercase italic tracking-tighter text-lg leading-none">{product.name}</h4>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-primary mt-2">{product.category}</p>
+                                 </div>
+                                 <p className="font-black italic text-xl">${product.price.toFixed(2)}</p>
+                              </div>
+                              <div className="flex items-center justify-between pt-4 border-t border-border/10">
+                                 <div className="flex items-center gap-2">
+                                    <Package size={14} className="text-muted-foreground" />
+                                    <span className="text-[10px] font-black uppercase italic">{product.stock} Units</span>
+                                 </div>
+                                 <Badge className={cn("rounded-sm border-none font-black text-[8px] uppercase tracking-[0.2em] px-2 py-0.5", product.status === 'draft' ? "bg-amber-500 text-amber-950" : product.status === 'archived' ? "bg-secondary text-secondary-foreground" : "bg-emerald-500 text-emerald-950")}>
+                                    {product.status || 'Active'}
+                                 </Badge>
+                              </div>
+                           </div>
+                        </motion.div>
+                     ))}
+                  </div>
+               )}
+            </div>
         </div>
       </div>
+      
+      <ProductModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchProductsAndStats}
+        product={editingProduct}
+      />
     </AdminLayout>
   );
 }

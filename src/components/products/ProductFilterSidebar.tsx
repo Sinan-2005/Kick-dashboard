@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,13 +17,13 @@ const FilterSection = ({ title, isOpen, onToggle, children }: FilterSectionProps
     <div className="border-b border-border/50 py-4">
       <button 
         onClick={onToggle}
-        className="w-full flex items-center justify-between group py-2"
+        className="w-full flex items-center justify-between group py-3"
       >
-        <span className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">{title}</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground group-hover:text-primary transition-colors">{title}</span>
         {isOpen ? (
-          <ChevronUp size={20} className="text-foreground" />
+          <ChevronUp size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
         ) : (
-          <ChevronDown size={20} className="text-foreground" />
+          <ChevronDown size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
         )}
       </button>
       {isOpen && (
@@ -34,15 +35,44 @@ const FilterSection = ({ title, isOpen, onToggle, children }: FilterSectionProps
   );
 };
 
-export function ProductFilterSidebar({ className }: { className?: string }) {
+interface ProductFilterSidebarProps {
+  className?: string;
+  selectedCategory: string;
+  onCategoryChange: (category: string) => void;
+  selectedStatus: string;
+  onStatusChange: (status: string) => void;
+  onReset: () => void;
+}
+
+export function ProductFilterSidebar({ 
+  className, 
+  selectedCategory, 
+  onCategoryChange, 
+  selectedStatus, 
+  onStatusChange, 
+  onReset 
+}: ProductFilterSidebarProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    "Gender": true,
-    "Size": false,
-    "Shop By Price": false,
-    "Brand": false,
-    "Discount": false,
-    "Product Label": false,
+    "Category": true,
+    "Status": true,
   });
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get("/categories");
+        setCategories(res.data);
+      } catch (error) {
+        console.error("Failed to fetch categories", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const toggleSection = (title: string) => {
     setOpenSections(prev => ({
@@ -56,38 +86,43 @@ export function ProductFilterSidebar({ className }: { className?: string }) {
       <div className="w-full flex justify-center pb-2">
         <Button 
           variant="outline" 
+          onClick={onReset}
           className="w-full h-12 rounded-full border-border/60 text-muted-foreground hover:bg-secondary hover:text-foreground font-medium transition-all"
         >
-          Reset
+          Reset Filters
         </Button>
       </div>
 
       <div className="flex flex-col">
-        <FilterSection title="Gender" isOpen={openSections["Gender"]} onToggle={() => toggleSection("Gender")}>
+        <FilterSection title="Category" isOpen={openSections["Category"]} onToggle={() => toggleSection("Category")}>
           <div className="space-y-3">
-            {["Men", "Women", "Unisex"].map((item) => (
+            {isLoading ? (
+              <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            ) : (
+              categories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-3">
+                  <Checkbox 
+                    id={`cat-${cat.id}`} 
+                    checked={selectedCategory === cat.id || selectedCategory === cat.name}
+                    onCheckedChange={() => onCategoryChange(cat.id)}
+                  />
+                  <label htmlFor={`cat-${cat.id}`} className="text-sm font-black uppercase italic leading-none cursor-pointer">{cat.name}</label>
+                </div>
+              ))
+            )}
+          </div>
+        </FilterSection>
+
+        <FilterSection title="Lifecycle Status" isOpen={openSections["Status"]} onToggle={() => toggleSection("Status")}>
+          <div className="space-y-3">
+            {["active", "draft", "archived"].map((item) => (
               <div key={item} className="flex items-center gap-3">
-                <Checkbox id={`gender-${item}`} />
-                <label htmlFor={`gender-${item}`} className="text-sm font-medium leading-none cursor-pointer">{item}</label>
-              </div>
-            ))}
-          </div>
-        </FilterSection>
-
-        <FilterSection title="Size" isOpen={openSections["Size"]} onToggle={() => toggleSection("Size")}>
-          <div className="grid grid-cols-3 gap-2">
-            {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
-              <button key={size} className="h-10 border border-border/50 rounded-lg text-xs font-bold hover:border-primary hover:bg-primary/5 transition-all uppercase tracking-widest">{size}</button>
-            ))}
-          </div>
-        </FilterSection>
-
-        <FilterSection title="Shop By Price" isOpen={openSections["Shop By Price"]} onToggle={() => toggleSection("Shop By Price")}>
-          <div className="space-y-3">
-             {["Under $50", "$50 - $100", "$100 - $150", "Over $150"].map((range) => (
-              <div key={range} className="flex items-center gap-3">
-                <Checkbox id={`price-${range}`} />
-                <label htmlFor={`price-${range}`} className="text-sm font-medium leading-none cursor-pointer">{range}</label>
+                <Checkbox 
+                  id={`status-${item}`} 
+                  checked={selectedStatus === item}
+                  onCheckedChange={() => onStatusChange(item)}
+                />
+                <label htmlFor={`status-${item}`} className="text-sm font-medium leading-none cursor-pointer uppercase">{item}</label>
               </div>
             ))}
           </div>

@@ -8,6 +8,7 @@ import { CouponsPage } from "./pages/CouponsPage";
 import { MediaPage } from "./pages/MediaPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { CategoriesPage } from "./pages/CategoriesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { useAuthStore } from "./store/authStore";
 import { Toaster } from "sonner";
@@ -61,6 +62,15 @@ function App() {
           element={
             <ProtectedRoute>
               <CustomersPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/categories" 
+          element={
+            <ProtectedRoute>
+              <CategoriesPage />
             </ProtectedRoute>
           } 
         />

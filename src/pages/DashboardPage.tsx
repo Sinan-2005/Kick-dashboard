@@ -43,6 +43,8 @@ const quickActions = [
   { title: "Create Order", icon: ShoppingBag, color: "bg-secondary text-foreground", href: "/orders" },
 ];
 
+import { toast } from "sonner";
+
 export function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [salesData, setSalesData] = useState<any[]>([]);
@@ -98,6 +100,34 @@ export function DashboardPage() {
     lowStockItems: 0, newCustomers: 0, conversionRate: 0, canceledOrders: 0
   };
 
+  const handleGenerateReport = () => {
+    if (!stats) {
+      toast.error("Telemetry data unavailable for synthesis.");
+      return;
+    }
+
+    const reportData = [
+      ["Metric", "Value"],
+      ["Total Revenue", `$${stats.stats?.totalRevenue || 0}`],
+      ["Total Orders", stats.stats?.totalOrders || 0],
+      ["Total Users", stats.stats?.totalUsers || 0],
+      ["Low Stock Alert", stats.stats?.lowStockCount || 0],
+      ["Report Generation Date", new Date().toLocaleString()]
+    ];
+
+    const csvContent = reportData.map(row => row.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `KICK_SYSTEM_REPORT_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Master performance report synthesized.");
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-10 pb-10">
@@ -119,7 +149,7 @@ export function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter px-6 h-12 rounded-xl group">
+            <Button onClick={handleGenerateReport} className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter px-6 h-12 rounded-xl group shadow-neon">
               Generate Report
               <ArrowUpRight className="ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             </Button>

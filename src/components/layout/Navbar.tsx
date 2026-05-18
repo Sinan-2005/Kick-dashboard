@@ -28,6 +28,9 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
 
+import { useAuthStore } from "@/store/authStore";
+import { useNavigate } from "react-router-dom";
+
 const notifications = [
   { id: 1, type: "order", title: "New Order #9928", description: "Alex Johnson placed an order for $150.00", time: "2m ago", icon: ShoppingCart, color: "text-primary" },
   { id: 2, type: "stock", title: "Low Stock Alert", description: "Nike Dunk Low (Black/White) is at 2 units", time: "15m ago", icon: AlertCircle, color: "text-amber-500" },
@@ -36,6 +39,8 @@ const notifications = [
 
 export function Navbar() {
   const { toggle } = useSidebar();
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
   const [mounted, setMounted] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [theme, setTheme] = React.useState(localStorage.getItem("theme") || "dark");
@@ -52,6 +57,15 @@ export function Navbar() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+  };
 
   return (
     <header className={cn(
@@ -152,8 +166,8 @@ export function Navbar() {
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-4 pl-3 pr-2 py-1.5 rounded-2xl bg-secondary/30 border border-border/50 hover:border-primary/50 transition-all group outline-none">
             <div className="hidden md:block text-right space-y-0.5">
-              <p className="text-[10px] font-black text-foreground uppercase italic tracking-tighter leading-none">Alex Johnson</p>
-              <p className="text-[8px] font-black text-primary uppercase tracking-widest leading-none">Super Admin</p>
+              <p className="text-[10px] font-black text-foreground uppercase italic tracking-tighter leading-none">{mounted ? user?.name : "..."}</p>
+              <p className="text-[8px] font-black text-primary uppercase tracking-widest leading-none">{mounted ? user?.role.replace('_', ' ') : "..."}</p>
             </div>
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center overflow-hidden">
               <User className="text-black" size={20} strokeWidth={3} />
@@ -161,9 +175,11 @@ export function Navbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 bg-card/95 backdrop-blur-xl border-border/50 p-2 rounded-2xl">
             <div className="px-4 py-4 flex flex-col items-center gap-3 bg-secondary/20 rounded-xl mb-2">
-               <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-black italic font-black text-3xl">AJ</div>
+               <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-black italic font-black text-3xl">
+                 {mounted && user?.name ? getInitials(user.name) : "??"}
+               </div>
                <div className="text-center">
-                  <p className="text-sm font-black text-foreground uppercase italic tracking-tighter">Alex Johnson</p>
+                  <p className="text-sm font-black text-foreground uppercase italic tracking-tighter">{mounted ? user?.name : "Loading..."}</p>
                   <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Global Terminal Access</p>
                </div>
             </div>
@@ -174,7 +190,7 @@ export function Navbar() {
               <Settings className="mr-3 h-4 w-4" /> Terminal Config
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border/50" />
-            <DropdownMenuItem className="focus:bg-destructive/10 cursor-pointer rounded-xl font-black uppercase italic text-xs tracking-tighter px-4 py-3 text-red-500">
+            <DropdownMenuItem onClick={handleLogout} className="focus:bg-destructive/10 cursor-pointer rounded-xl font-black uppercase italic text-xs tracking-tighter px-4 py-3 text-red-500">
               <LogOut className="mr-3 h-4 w-4" /> Terminate Session
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -183,3 +199,4 @@ export function Navbar() {
     </header>
   );
 }
+

@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Zap,
-  Sparkles
+  Sparkles,
+  Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { useAuthStore } from "@/store/authStore";
 const menuItems = [
   { icon: LayoutDashboard, label: "Command Center", href: "/dashboard" },
   { icon: Package, label: "Inventory", href: "/products" },
+  { icon: Layers, label: "Taxonomy", href: "/categories" },
   { icon: ShoppingCart, label: "Fulfillment", href: "/orders" },
   { icon: Users, label: "Client Base", href: "/customers" },
   { icon: ImageIcon, label: "Media Vault", href: "/media" },

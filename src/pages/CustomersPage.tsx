@@ -32,17 +32,20 @@ import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 export function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newIdentity, setNewIdentity] = useState({ name: "", email: "", password: "", role: "USER" });
+
   const fetchCustomers = async () => {
     setIsLoading(true);
     try {
       const response = await api.get("/users");
-      // Filter for non-admin users if necessary, or show all
       const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
       setCustomers(data);
     } catch (error) {
@@ -55,6 +58,36 @@ export function CustomersPage() {
   useEffect(() => {
     fetchCustomers();
   }, []);
+
+  const handleAddIdentity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post("/auth/register", newIdentity);
+      toast.success("Identity synthesized and added to registry");
+      setIsAddModalOpen(false);
+      setNewIdentity({ name: "", email: "", password: "", role: "USER" });
+      fetchCustomers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Synthesis Protocol Failure");
+    }
+  };
+
+  const handleSuspend = async (id: string) => {
+    if (!window.confirm("Are you sure you want to suspend this identity? Access will be revoked.")) return;
+    try {
+      await api.delete(`/users/${id}`);
+      setCustomers(prev => prev.filter(u => u.id !== id));
+      toast.success("Identity suspended. Node access terminated.");
+    } catch (error) {
+      console.error("Suspension failed", error);
+      toast.error("Suspension Protocol Error");
+    }
+  };
+
+  const filteredCustomers = customers.filter(c => 
+    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <AdminLayout>
@@ -73,14 +106,87 @@ export function CustomersPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-border/50 bg-card/50 text-foreground hover:bg-secondary h-11 rounded-xl font-black uppercase italic tracking-tighter text-xs">
+            <Button onClick={() => toast("Exporting identity ledger...")} variant="outline" className="border-border/50 bg-card/50 text-foreground hover:bg-secondary h-11 rounded-xl font-black uppercase italic tracking-tighter text-xs">
               <Download className="mr-2 h-4 w-4" /> Export Identities
             </Button>
-            <Button className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-11 px-6 rounded-xl">
+            <Button onClick={() => setIsAddModalOpen(true)} className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-11 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95">
               <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> Add Identity
             </Button>
           </div>
         </div>
+
+        {/* Add Identity Modal */}
+        {isAddModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+              onClick={() => setIsAddModalOpen(false)} 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              className="relative w-full max-w-lg glass-premium p-10 rounded-[3rem] border border-border/50 space-y-8"
+            >
+              <div className="space-y-1">
+                <h3 className="text-3xl font-black italic tracking-tighter uppercase leading-none">Identity <span className="text-primary">Synthesis</span></h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Register new operative credentials</p>
+              </div>
+              
+              <form onSubmit={handleAddIdentity} className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic ml-2">Designation (Name)</label>
+                    <Input 
+                      required 
+                      placeholder="e.g. Neo Anderson" 
+                      value={newIdentity.name}
+                      onChange={(e) => setNewIdentity({...newIdentity, name: e.target.value})}
+                      className="bg-secondary/20 border-border/50 h-14 rounded-2xl focus:border-primary/50 font-bold uppercase italic"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic ml-2">Core Identifier (Email)</label>
+                    <Input 
+                      required 
+                      type="email"
+                      placeholder="agent@matrix.com" 
+                      value={newIdentity.email}
+                      onChange={(e) => setNewIdentity({...newIdentity, email: e.target.value})}
+                      className="bg-secondary/20 border-border/50 h-14 rounded-2xl focus:border-primary/50 font-bold uppercase italic"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic ml-2">Access Key (Password)</label>
+                    <Input 
+                      required 
+                      type="password"
+                      placeholder="••••••••" 
+                      value={newIdentity.password}
+                      onChange={(e) => setNewIdentity({...newIdentity, password: e.target.value})}
+                      className="bg-secondary/20 border-border/50 h-14 rounded-2xl focus:border-primary/50 font-bold uppercase italic"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic ml-2">Authority Level (Role)</label>
+                    <select 
+                      value={newIdentity.role}
+                      onChange={(e) => setNewIdentity({...newIdentity, role: e.target.value})}
+                      className="w-full bg-secondary/20 border border-border/50 h-14 rounded-2xl px-4 focus:outline-none focus:border-primary/50 font-bold uppercase italic appearance-none"
+                    >
+                       <option value="USER" className="bg-black">Operative (User)</option>
+                       <option value="ADMIN" className="bg-black">Commander (Admin)</option>
+                    </select>
+                 </div>
+                 
+                 <div className="flex gap-4 pt-4">
+                    <Button type="button" variant="ghost" onClick={() => setIsAddModalOpen(false)} className="flex-1 h-16 rounded-2xl font-black uppercase italic tracking-widest">Abort</Button>
+                    <Button type="submit" className="flex-[2] h-16 bg-primary text-black rounded-2xl font-black uppercase italic tracking-widest shadow-lg shadow-primary/20">Synthesize Identity</Button>
+                 </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
 
         <div className="flex flex-col md:flex-row gap-4 items-center">
            <div className="flex-1 w-full relative group">
@@ -92,7 +198,7 @@ export function CustomersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
            </div>
-           <Button variant="outline" className="h-14 px-6 border-border/50 bg-card text-foreground rounded-2xl font-black uppercase italic tracking-widest text-xs">
+           <Button onClick={() => toast("Authority filters coming in next node update")} variant="outline" className="h-14 px-6 border-border/50 bg-card text-foreground rounded-2xl font-black uppercase italic tracking-widest text-xs">
               <Filter size={18} className="mr-2 text-primary" /> Authority Filter
            </Button>
         </div>
@@ -120,8 +226,8 @@ export function CustomersPage() {
                       <TableCell className="text-right pr-6"><div className="w-8 h-8 bg-secondary/50 rounded-lg ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : Array.isArray(customers) && customers.length > 0 ? (
-                  customers.map((user, i) => (
+                ) : Array.isArray(filteredCustomers) && filteredCustomers.length > 0 ? (
+                  filteredCustomers.map((user, i) => (
                     <motion.tr 
                       key={user.id} 
                       initial={{ opacity: 0, y: 10 }} 
@@ -164,13 +270,13 @@ export function CustomersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border p-2 min-w-[160px]">
-                            <DropdownMenuItem className="focus:bg-primary focus:text-black cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                            <DropdownMenuItem onClick={() => toast(`Comms channel opening for ${user.email}`)} className="focus:bg-primary focus:text-black cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
                               <Mail className="mr-2 h-4 w-4" /> Message
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                            <DropdownMenuItem onClick={() => toast("Elevation protocol requires SuperAdmin approval")} className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
                               <UserCheck className="mr-2 h-4 w-4" /> Elevate
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5 text-red-500">
+                            <DropdownMenuItem onClick={() => handleSuspend(user.id)} className="focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5 text-red-500">
                               <ShieldAlert className="mr-2 h-4 w-4" /> Suspend
                             </DropdownMenuItem>
                           </DropdownMenuContent>

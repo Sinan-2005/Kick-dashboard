@@ -34,10 +34,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { toast } from "sonner";
+
+import { CouponModal } from "@/components/coupons/CouponModal";
 
 export function CouponsPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<any>(null);
+
+  const openAddModal = () => {
+    setEditingCoupon(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (coupon: any) => {
+    setEditingCoupon(coupon);
+    setIsModalOpen(true);
+  };
 
   const fetchCoupons = async () => {
     setIsLoading(true);
@@ -49,6 +66,18 @@ export function CouponsPage() {
       console.error("Failed to fetch coupons", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeactivate = async (id: string) => {
+    if (!window.confirm("Are you sure you want to terminate this promotion protocol?")) return;
+    try {
+      await api.delete(`/coupons/${id}`);
+      setCoupons(prev => prev.filter(c => c.id !== id));
+      toast.success("Promotion deactivated. Ledger updated.");
+    } catch (error) {
+      console.error("Deactivation failed", error);
+      toast.error("Deactivation Protocol Error");
     }
   };
 
@@ -66,14 +95,14 @@ export function CouponsPage() {
               Promotions Engine
             </div>
             <h2 className="text-4xl font-black tracking-tighter text-foreground uppercase italic leading-none">
-              Market <span className="text-primary">Incentives</span>
+              Marketing <span className="text-primary">Ops</span>
             </h2>
             <p className="text-muted-foreground font-medium uppercase text-xs tracking-widest pt-2">
-              Configuring active discount codes and seasonal campaigns
+              Managing discount protocols and campaign incentives
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-11 px-6 rounded-xl">
+            <Button onClick={openAddModal} className="bg-primary text-black hover:bg-primary/90 font-black uppercase italic tracking-tighter h-11 px-6 rounded-xl shadow-neon">
               <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> Generate Code
             </Button>
           </div>
@@ -142,7 +171,7 @@ export function CouponsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-black text-foreground text-sm tracking-tighter">
-                          {coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
+                          {coupon.type === 'PERCENTAGE' ? `${coupon.discount}% OFF` : `$${coupon.discount} OFF`}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -150,7 +179,7 @@ export function CouponsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-xs font-bold text-foreground">
-                          {coupon.expiryDate ? new Date(coupon.expiryDate).toLocaleDateString() : 'NO EXPIRY'}
+                          {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : 'NO EXPIRY'}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -169,10 +198,10 @@ export function CouponsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border p-2 min-w-[160px]">
-                            <DropdownMenuItem className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                            <DropdownMenuItem onClick={() => openEditModal(coupon)} className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5 text-red-500">
+                            <DropdownMenuItem onClick={() => handleDeactivate(coupon.id)} className="focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5 text-red-500">
                               <Trash2 className="mr-2 h-4 w-4" /> Deactivate
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -183,7 +212,10 @@ export function CouponsPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} className="h-64 text-center">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">No Active Promotions</p>
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <Ticket size={48} className="text-muted-foreground opacity-20" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">No Promotion Protocols Detected</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
@@ -192,6 +224,13 @@ export function CouponsPage() {
            </div>
         </Card>
       </div>
+
+      <CouponModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchCoupons}
+        coupon={editingCoupon}
+      />
     </AdminLayout>
   );
 }

@@ -31,12 +31,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+
+import { toast } from "sonner";
 
 export function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -58,6 +61,47 @@ export function OrdersPage() {
       console.error("Failed to fetch orders", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!orders || orders.length === 0) {
+      toast.error("No transaction logs available for synthesis.");
+      return;
+    }
+
+    const headers = ["Order ID", "Customer", "Email", "Date", "Total", "Status"];
+    const csvContent = [
+      headers.join(","),
+      ...orders.map(order => [
+        `KCK-${order.id.substring(0, 8)}`,
+        order.user?.name || "Guest",
+        order.user?.email || "N/A",
+        new Date(order.createdAt).toLocaleDateString(),
+        order.totalAmount,
+        order.paymentStatus
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `KICK_LEDGER_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Master ledger export synthesized successfully.");
+  };
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await api.patch(`/orders/${id}`, { paymentStatus: status });
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, paymentStatus: status } : o));
+      toast.success(`Protocol ${status} deployed to node.`);
+    } catch (error) {
+      toast.error("Status Update Failed");
     }
   };
 
@@ -97,7 +141,7 @@ export function OrdersPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-border/50 bg-card/50 text-foreground hover:bg-secondary h-11 rounded-xl font-black uppercase italic tracking-tighter text-xs">
+            <Button onClick={handleExportCSV} variant="outline" className="border-border/50 bg-card/50 text-foreground hover:bg-secondary h-11 rounded-xl font-black uppercase italic tracking-tighter text-xs">
               <Download className="mr-2 h-4 w-4" /> Export Ledger
             </Button>
           </div>
@@ -135,7 +179,7 @@ export function OrdersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
            </div>
-           <Button variant="outline" className="h-14 px-6 border-border/50 bg-card text-foreground rounded-2xl font-black uppercase italic tracking-widest text-xs">
+           <Button onClick={() => toast("Fulfillment filters pending deployment")} variant="outline" className="h-14 px-6 border-border/50 bg-card text-foreground rounded-2xl font-black uppercase italic tracking-widest text-xs">
               <Filter size={18} className="mr-2 text-primary" /> Filter Matrix
            </Button>
         </div>
@@ -201,11 +245,18 @@ export function OrdersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border p-2 min-w-[160px]">
-                            <DropdownMenuItem className="focus:bg-primary focus:text-black cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                            <DropdownMenuItem onClick={() => toast(`Opening node analysis for #KCK-${order.id.substring(0, 8)}`)} className="focus:bg-primary focus:text-black cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
                               <Eye className="mr-2 h-4 w-4" /> View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="focus:bg-secondary cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
-                              <ExternalLink className="mr-2 h-4 w-4" /> Receipt
+                            <DropdownMenuSeparator className="bg-border/50" />
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'PAID')} className="focus:bg-emerald-500/10 focus:text-emerald-500 cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                               <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as Paid
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'PENDING')} className="focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                               <Clock className="mr-2 h-4 w-4" /> Mark as Pending
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'FAILED')} className="focus:bg-red-500/10 focus:text-red-500 cursor-pointer rounded-lg font-black uppercase italic text-xs tracking-tighter px-3 py-2.5">
+                               <XCircle className="mr-2 h-4 w-4" /> Mark as Failed
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
