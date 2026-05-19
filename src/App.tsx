@@ -9,7 +9,12 @@ import { MediaPage } from "./pages/MediaPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
+import { SubscribersPage } from "./pages/SubscribersPage";
+import { SupportDashboardPage } from "./pages/SupportDashboardPage";
+import { TicketsPage } from "./pages/TicketsPage";
+import { TicketDetailPage } from "./pages/TicketDetailPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { MessagesPage } from "./pages/MessagesPage";
 import { useAuthStore } from "./store/authStore";
 import { Toaster } from "sonner";
 
@@ -112,10 +117,55 @@ function App() {
         />
 
         <Route 
+          path="/subscribers" 
+          element={
+            <ProtectedRoute>
+              <SubscribersPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/support" 
+          element={
+            <ProtectedRoute>
+              <SupportDashboardPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/tickets" 
+          element={
+            <ProtectedRoute>
+              <TicketsPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/tickets/:id" 
+          element={
+            <ProtectedRoute>
+              <TicketDetailPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
           path="/settings" 
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/messages" 
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
             </ProtectedRoute>
           } 
         />

@@ -16,7 +16,8 @@ import {
   Image as ImageIcon,
   Zap,
   Sparkles,
-  Layers
+  Layers,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,11 @@ const menuItems = [
   { icon: Users, label: "Client Base", href: "/customers" },
   { icon: ImageIcon, label: "Media Vault", href: "/media" },
   { icon: Ticket, label: "Promotions", href: "/coupons" },
+  { icon: Users, label: "Subscribers", href: "/subscribers" },
   { icon: Star, label: "Market Feedback", href: "/reviews" },
+  { icon: MessageSquare, label: "Support Desk", href: "/support" },
+  { icon: MessageSquare, label: "Tickets", href: "/tickets" },
+  { icon: MessageSquare, label: "Node Reports", href: "/messages" },
   { icon: BarChart3, label: "Market Intel", href: "/analytics" },
   { icon: Settings, label: "System Config", href: "/settings" },
 ];
